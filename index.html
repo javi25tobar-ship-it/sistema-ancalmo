@@ -638,6 +638,9 @@
 </div>
 
 <script>
+    const SHEETDB_INGRESOS = 'https://sheetdb.io/api/v1/190LNQHT9uHW6OTM9Iwo8lEe5o3O4vJSptk2YW1MbBvg/INGRESOS';
+    const SHEETDB_PEDIDOS = 'https://sheetdb.io/api/v1/190LNQHT9uHW6OTM9Iwo8lEe5o3O4vJSptk2YW1MbBvg/PEDIDOS';
+    const SHEETDB_SALIDAS = 'https://sheetdb.io/api/v1/190LNQHT9uHW6OTM9Iwo8lEe5o3O4vJSptk2YW1MbBvg/SALIDAS';
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbxQhthJIwZstUwU-8GJ_e7Ku4g0QlL1tUZb_KUgbRfcU_3D59wjmDpiVHK9YSBoeeghEA/exec';
     let movimientos = JSON.parse(sessionStorage.getItem('ancalmo_sistema_v5')) || [];
     let egresos = JSON.parse(sessionStorage.getItem('ancalmo_egresos_v1')) || [];
@@ -756,7 +759,7 @@
         t._timer = setTimeout(()=>{ t.style.opacity='0'; }, 4000);
     }
     
-    // Función para guardar TODO en Google Sheets
+    // Función para guardar TODO en Google Sheets usando SheetDB
     async function guardarTodoEnGoogleSheets() {
         let btnGuardar = document.getElementById('btnGuardarGoogleSheets');
         btnGuardar.disabled = true;
@@ -765,43 +768,85 @@
         try {
             mostrarToast('💾 Guardando en Google Sheets...', 'info');
             
+            // Preparar datos para SheetDB
+            let datosIngresos = movimientos.map(m => ({
+                'id': m.id || '',
+                'num': m.num || '',
+                'remision': m.remision || '',
+                'ot': m.ot || '',
+                'eq': m.eq || '',
+                'cabezal': m.cabezal || '',
+                'remolque': m.remolque || '',
+                'palletsRec': m.palletsRec || 0,
+                'cajas': m.cajas || 0,
+                'palletsAlm': m.palletsAlm || 0,
+                'peso': m.peso || 0,
+                'etaBlue': m.etaBlue || '',
+                'mes': m.mes || '',
+                'ingreso': m.ingreso || '',
+                'agenda': m.agenda || ''
+            }));
+            
+            let datosPedidos = egresos.map(e => ({
+                'id': e.id || '',
+                'num': e.num || '',
+                'pedido': e.pedido || '',
+                'cliente': e.cliente || '',
+                'destino': e.destino || '',
+                'pallets': e.pallets || 0,
+                'cajas': e.cajas || 0,
+                'peso': e.peso || 0,
+                'fechaDespacho': e.fechaDespacho || '',
+                'mes': e.mes || '',
+                'equipos': e.equipos || '',
+                'estado': e.estado || ''
+            }));
+            
+            let datosSalidas = salidas.map(s => ({
+                'id': s.id || '',
+                'num': s.num || '',
+                'correlativo': s.correlativo || '',
+                'pedido': s.pedido || '',
+                'cliente': s.cliente || '',
+                'originDestino': s.origen || '',
+                'cabezal': s.cabezal || '',
+                'remolque': s.remolque || '',
+                'pallets': s.pallets || 0,
+                'cajas': s.cajas || 0,
+                'peso': s.peso || 0,
+                'fechaSalida': s.fechaSalida || '',
+                'mes': s.mes || '',
+                'estado': s.estado || '',
+                'idPedidoOrigen': s.idPedidoOrigen || ''
+            }));
+            
             // Guardar Ingresos
-            let respuesta1 = await fetch(GAS_URL, {
+            await fetch(SHEETDB_INGRESOS, {
                 method: 'POST',
-                body: JSON.stringify({
-                    action: 'guardarIngresos',
-                    movimientos: movimientos
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data: datosIngresos })
             });
             
-            // Guardar Egresos
-            let respuesta2 = await fetch(GAS_URL, {
+            // Guardar Pedidos
+            await fetch(SHEETDB_PEDIDOS, {
                 method: 'POST',
-                body: JSON.stringify({
-                    action: 'guardarEgresos',
-                    egresos: egresos
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data: datosPedidos })
             });
             
             // Guardar Salidas
-            let respuesta3 = await fetch(GAS_URL, {
+            await fetch(SHEETDB_SALIDAS, {
                 method: 'POST',
-                body: JSON.stringify({
-                    action: 'guardarSalidas',
-                    salidas: salidas
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data: datosSalidas })
             });
             
-            if (respuesta1.ok && respuesta2.ok && respuesta3.ok) {
-                mostrarToast('✅ ¡Guardado exitosamente en Google Sheets!', 'success');
-                btnGuardar.innerText = '💾 GUARDAR EN SHEETS';
-            } else {
-                mostrarToast('❌ Error al guardar. Intenta de nuevo.', 'warning');
-                btnGuardar.innerText = '💾 GUARDAR EN SHEETS';
-            }
+            mostrarToast('✅ ¡Guardado exitosamente en Google Sheets!', 'success');
+            btnGuardar.innerText = '💾 GUARDAR EN SHEETS';
+            
         } catch (err) {
             console.error('Error guardando:', err);
-            mostrarToast('❌ Error de conexión: ' + err.message, 'warning');
+            mostrarToast('❌ Error: ' + err.message, 'warning');
             btnGuardar.innerText = '💾 GUARDAR EN SHEETS';
         } finally {
             btnGuardar.disabled = false;
