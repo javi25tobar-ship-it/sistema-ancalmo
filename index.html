@@ -638,9 +638,10 @@
 </div>
 
 <script>
-    const SHEETDB_INGRESOS = 'https://sheetdb.io/api/v1/190LNQHT9uHW6OTM9Iwo8lEe5o3O4vJSptk2YW1MbBvg/INGRESOS';
-    const SHEETDB_PEDIDOS = 'https://sheetdb.io/api/v1/190LNQHT9uHW6OTM9Iwo8lEe5o3O4vJSptk2YW1MbBvg/PEDIDOS';
-    const SHEETDB_SALIDAS = 'https://sheetdb.io/api/v1/190LNQHT9uHW6OTM9Iwo8lEe5o3O4vJSptk2YW1MbBvg/SALIDAS';
+    const SHEETDB_BASE = 'https://sheetdb.io/api/v1/190LNQHT9uHW6OTM9Iwo8lEe5o3O4vJSptk2YW1MbBvg';
+    const SHEETDB_INGRESOS = SHEETDB_BASE + '?sheet=INGRESOS';
+    const SHEETDB_PEDIDOS = SHEETDB_BASE + '?sheet=PEDIDOS';
+    const SHEETDB_SALIDAS = SHEETDB_BASE + '?sheet=SALIDAS';
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbxQhthJIwZstUwU-8GJ_e7Ku4g0QlL1tUZb_KUgbRfcU_3D59wjmDpiVHK9YSBoeeghEA/exec';
     let movimientos = JSON.parse(sessionStorage.getItem('ancalmo_sistema_v5')) || [];
     let egresos = JSON.parse(sessionStorage.getItem('ancalmo_egresos_v1')) || [];
