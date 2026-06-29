@@ -122,8 +122,11 @@
         
         .table-responsive { overflow-x: auto; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 4px; background: white; margin-bottom: 10px; max-height: 60vh; }
         
-        table { width: 100%; border-collapse: collapse; min-width: 1400px; table-layout: fixed; } 
-        th { background-color: #f1f5f9; color: #334155; font-weight: bold; border-bottom: 2px solid #cbd5e1; position: sticky; top: 0; z-index: 15; box-shadow: 0 1px 0 rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; min-width: 1400px; table-layout: auto; } 
+        th { background-color: #f1f5f9; color: #334155; font-weight: bold; border-bottom: 2px solid #cbd5e1; position: sticky; top: 0; z-index: 15; box-shadow: 0 1px 0 rgba(0,0,0,0.05); user-select: none; }
+        th.resizable { position: relative; }
+        th.resizable::after { content: ''; position: absolute; right: 0; top: 0; width: 5px; height: 100%; cursor: col-resize; background: transparent; }
+        th.resizable:hover::after { background: rgba(0,120,212,0.3); }
         td, th { padding: 6px 8px; text-align: left; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box; }
         td { border-bottom: 1px solid #e2e8f0; }
         tr:hover { background-color: #f8fafc; }
@@ -685,15 +688,15 @@
     }
 
     function saveMovimientos() {
-        saveMovimientos();
+        localStorage.setItem('ancalmo_sistema_v5', JSON.stringify(movimientos));
         gasSync('INGRESOS', movimientos);
     }
     function saveEgresos() {
-        saveEgresos();
+        localStorage.setItem('ancalmo_egresos_v1', JSON.stringify(egresos));
         gasSync('PEDIDOS', egresos);
     }
     function saveSalidas() {
-        saveSalidas();
+        localStorage.setItem('ancalmo_salidas_v1', JSON.stringify(salidas));
         gasSync('SALIDAS', salidas);
     }
 
@@ -922,8 +925,33 @@
 
     function procesarYFormatearFechaLatina(fechaDato) { 
         if (!fechaDato || String(fechaDato).trim() === '') return ''; 
-        if (fechaDato instanceof Date && !isNaN(fechaDato.getTime())) return `${fechaDato.getDate()}/${fechaDato.getMonth() + 1}/${fechaDato.getFullYear()}`; 
-        try { let t = String(fechaDato).trim().replace(/\s+/g, ''); if (t.includes('-')) { let p = t.split('-'); return `${parseInt(p[2],10)}/${parseInt(p[1],10)}/${p[0]}`; } if (t.includes('/')) { let p = t.split('/'); return `${p[0]}/${p[1]}/${p[2]}`; } return t; } catch (e) { return ''; } 
+        if (fechaDato instanceof Date && !isNaN(fechaDato.getTime())) {
+            // Asegurar formato dd/mm/yyyy SIEMPRE, sin hora
+            let d = fechaDato.getDate().toString().padStart(2, '0');
+            let m = (fechaDato.getMonth() + 1).toString().padStart(2, '0');
+            let y = fechaDato.getFullYear();
+            return `${d}/${m}/${y}`;
+        }
+        try { 
+            let t = String(fechaDato).trim();
+            // Remover hora si está incluida (ej: "2024-01-15 14:30:00" o "2024-01-15T14:30:00" o "15/01/2024 14:30:00")
+            if (t.includes('T')) t = t.split('T')[0];
+            else if (t.includes(' ')) t = t.split(' ')[0];
+            
+            if (t.includes('-')) { 
+                let p = t.split('-'); 
+                let d = p[2].padStart(2, '0');
+                let m = p[1].padStart(2, '0');
+                return `${d}/${m}/${p[0]}`; 
+            } 
+            if (t.includes('/')) { 
+                let p = t.split('/'); 
+                let d = p[0].padStart(2, '0');
+                let m = p[1].padStart(2, '0');
+                return `${d}/${m}/${p[2]}`; 
+            } 
+            return t; 
+        } catch (e) { return ''; } 
     }
     
     function revertirAFechaISO(fLatina) { 
@@ -1573,7 +1601,9 @@
                 let row = document.createElement('tr');
                 let color = t.tipo === 'INGRESO' ? 'var(--indigo)' : 'var(--orange)';
                 let emoji = t.tipo === 'INGRESO' ? '📥 INGRESO CARGA' : '📤 SALIDA PEDIDO';
-                row.innerHTML = "<td>" + t.fecha + "</td><td style='color:" + color + "; font-weight:bold;'>" + emoji + "</td><td><strong>" + t.doc + "</strong></td><td>" + t.pallets + "</td><td style='background:#fff3cd; text-align:center; font-weight:bold;'>" + stockSim + " Pallets</td><td>" + t.est + "</td>";
+                // Asegurar que la fecha siempre se muestre sin hora
+                let fechaFormato = t.fecha instanceof Date ? procesarYFormatearFechaLatina(t.fecha) : procesarYFormatearFechaLatina(t.fecha);
+                row.innerHTML = "<td>" + fechaFormato + "</td><td style='color:" + color + "; font-weight:bold;'>" + emoji + "</td><td><strong>" + t.doc + "</strong></td><td>" + t.pallets + "</td><td style='background:#fff3cd; text-align:center; font-weight:bold;'>" + stockSim + " Pallets</td><td>" + t.est + "</td>";
                 tbody.appendChild(row);
             }
         });
@@ -1874,6 +1904,70 @@
         mostrarToast('✅ Datos actualizados', 'success');
         render_and_calc();
     }, 30 * 60 * 1000);
+
+    // ── REDIMENSIONAMIENTO DE COLUMNAS ──────────────────────────────────────────
+    function enableColumnResize(tableId) {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+        
+        const storageKey = 'col_widths_' + tableId;
+        const savedWidths = JSON.parse(localStorage.getItem(storageKey) || '{}');
+        
+        const headers = table.querySelectorAll('th');
+        headers.forEach((th, idx) => {
+            th.classList.add('resizable');
+            
+            // Restaurar ancho guardado
+            if (savedWidths[idx]) {
+                th.style.width = savedWidths[idx] + 'px';
+            }
+            
+            // Agregar handler de resize
+            th.addEventListener('mousedown', (e) => {
+                if (e.button !== 0) return; // Solo botón izquierdo
+                
+                const startX = e.clientX;
+                const startWidth = th.offsetWidth;
+                
+                const handleMouseMove = (e) => {
+                    const diff = e.clientX - startX;
+                    const newWidth = Math.max(50, startWidth + diff); // Mínimo 50px
+                    th.style.width = newWidth + 'px';
+                };
+                
+                const handleMouseUp = () => {
+                    document.removeEventListener('mousemove', handleMouseMove);
+                    document.removeEventListener('mouseup', handleMouseUp);
+                    
+                    // Guardar ancho
+                    savedWidths[idx] = th.offsetWidth;
+                    localStorage.setItem(storageKey, JSON.stringify(savedWidths));
+                };
+                
+                document.addEventListener('mousemove', handleMouseMove);
+                document.addEventListener('mouseup', handleMouseUp);
+            });
+        });
+    }
+    
+    // Activar redimensionamiento cuando se renderizan las tablas
+    (function() {
+        setTimeout(() => {
+            enableColumnResize('tablaMovimientos');
+            enableColumnResize('tablaEgresos');
+            enableColumnResize('tablaSalidas');
+        }, 100);
+        
+        const originalRender = render_and_calc;
+        render_and_calc = function() {
+            originalRender.call(this);
+            setTimeout(() => {
+                enableColumnResize('tablaMovimientos');
+                enableColumnResize('tablaEgresos');
+                enableColumnResize('tablaSalidas');
+            }, 50);
+        };
+    })();
 </script>
 
 <div class='modal-overlay' id='modalPasswordFacturacion'>
