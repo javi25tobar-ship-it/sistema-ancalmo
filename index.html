@@ -707,39 +707,66 @@
     async function inicializarDesdeGAS() {
         mostrarToast('🔄 Conectando con Google Sheets...', 'info');
 
-        // Secuencial para evitar colision de callbacks JSONP
-        const remoto_m = await gasGet('INGRESOS');
-        const remoto_e = await gasGet('PEDIDOS');
-        const remoto_s = await gasGet('SALIDAS');
-
-        if (remoto_m !== null) {
-            _gasOnline = true;
-            if (remoto_m.length > 0) {
-                movimientos = remoto_m.map(r => ({ ...r, num: parseInt(r.num)||0, palletsRec: parseInt(r.palletsRec)||0, cajas: parseInt(r.cajas)||0, palletsAlm: parseInt(r.palletsAlm)||0, peso: parseFloat(r.peso)||0 }));
+        try {
+            // Cargar Ingresos desde SheetDB
+            const resIngresos = await fetch(SHEETDB_INGRESOS);
+            const dataIngresos = await resIngresos.json();
+            
+            if (resIngresos.ok && dataIngresos && dataIngresos.length > 0) {
+                movimientos = dataIngresos.map(r => ({ 
+                    ...r, 
+                    id: r.id || '',
+                    num: parseInt(r.num)||0, 
+                    palletsRec: parseInt(r.palletsRec)||0, 
+                    cajas: parseInt(r.cajas)||0, 
+                    palletsAlm: parseInt(r.palletsAlm)||0, 
+                    peso: parseFloat(r.peso)||0 
+                }));
                 sessionStorage.setItem('ancalmo_sistema_v5', JSON.stringify(movimientos));
-            } else if (movimientos.length > 0) {
-                await gasSync('INGRESOS', movimientos);
+                _gasOnline = true;
             }
-        }
-        if (remoto_e !== null) {
-            if (remoto_e.length > 0) {
-                egresos = remoto_e.map(r => ({ ...r, num: parseInt(r.num)||0, pallets: parseInt(r.pallets)||0, cajas: parseInt(r.cajas)||0, peso: parseFloat(r.peso)||0 }));
-                sessionStorage.setItem('ancalmo_egresos_v1', JSON.stringify(egresos));
-            } else if (egresos.length > 0) {
-                await gasSync('PEDIDOS', egresos);
-            }
-        }
-        if (remoto_s !== null) {
-            if (remoto_s.length > 0) {
-                salidas = remoto_s.map(r => ({ ...r, num: parseInt(r.num)||0, pallets: parseInt(r.pallets)||0, cajas: parseInt(r.cajas)||0, peso: parseFloat(r.peso)||0 }));
-                sessionStorage.setItem('ancalmo_salidas_v1', JSON.stringify(salidas));
-            } else if (salidas.length > 0) {
-                await gasSync('SALIDAS', salidas);
-            }
-        }
 
-        let estado = _gasOnline ? '🟢 Conectado a Google Sheets' : '🔴 Modo local (sin conexión)';
-        mostrarToast(estado, _gasOnline ? 'success' : 'warning');
+            // Cargar Egresos/Pedidos desde SheetDB
+            const resPedidos = await fetch(SHEETDB_PEDIDOS);
+            const dataPedidos = await resPedidos.json();
+            
+            if (resPedidos.ok && dataPedidos && dataPedidos.length > 0) {
+                egresos = dataPedidos.map(r => ({ 
+                    ...r, 
+                    id: r.id || '',
+                    num: parseInt(r.num)||0, 
+                    pallets: parseInt(r.pallets)||0, 
+                    cajas: parseInt(r.cajas)||0, 
+                    peso: parseFloat(r.peso)||0 
+                }));
+                sessionStorage.setItem('ancalmo_egresos_v1', JSON.stringify(egresos));
+                _gasOnline = true;
+            }
+
+            // Cargar Salidas desde SheetDB
+            const resSalidas = await fetch(SHEETDB_SALIDAS);
+            const dataSalidas = await resSalidas.json();
+            
+            if (resSalidas.ok && dataSalidas && dataSalidas.length > 0) {
+                salidas = dataSalidas.map(r => ({ 
+                    ...r, 
+                    id: r.id || '',
+                    num: parseInt(r.num)||0, 
+                    pallets: parseInt(r.pallets)||0, 
+                    cajas: parseInt(r.cajas)||0, 
+                    peso: parseFloat(r.peso)||0 
+                }));
+                sessionStorage.setItem('ancalmo_salidas_v1', JSON.stringify(salidas));
+                _gasOnline = true;
+            }
+
+            let estado = _gasOnline ? '🟢 Conectado a Google Sheets' : '🔴 Modo local (sin conexión)';
+            mostrarToast(estado, _gasOnline ? 'success' : 'warning');
+        } catch (err) {
+            console.error('Error cargando datos:', err);
+            mostrarToast('🔴 Modo local (sin conexión)', 'warning');
+        }
+        
         render_and_calc();
     }
 
