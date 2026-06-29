@@ -639,9 +639,9 @@
 
 <script>
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbxfA54oyK9APhPX0ORZSZOknN18uMCfJrVW7Q0Y2A7aP78W0jGMGhspbt3s63plQXx-NQ/exec';
-    let movimientos = JSON.parse(localStorage.getItem('ancalmo_sistema_v5')) || [];
-    let egresos = JSON.parse(localStorage.getItem('ancalmo_egresos_v1')) || [];
-    let salidas = JSON.parse(localStorage.getItem('ancalmo_salidas_v1')) || [];
+    let movimientos = JSON.parse(sessionStorage.getItem('ancalmo_sistema_v5')) || [];
+    let egresos = JSON.parse(sessionStorage.getItem('ancalmo_egresos_v1')) || [];
+    let salidas = JSON.parse(sessionStorage.getItem('ancalmo_salidas_v1')) || [];
     let _gasOnline = false;
 
     // ── Google Sheets sync via JSONP ───────────────────────────────────
@@ -688,19 +688,19 @@
     }
 
     function saveMovimientos() {
-        localStorage.setItem('ancalmo_sistema_v5', JSON.stringify(movimientos));
+        sessionStorage.setItem('ancalmo_sistema_v5', JSON.stringify(movimientos));
         gasSync('INGRESOS', movimientos);
     }
     function saveEgresos() {
-        localStorage.setItem('ancalmo_egresos_v1', JSON.stringify(egresos));
+        sessionStorage.setItem('ancalmo_egresos_v1', JSON.stringify(egresos));
         gasSync('PEDIDOS', egresos);
     }
     function saveSalidas() {
-        localStorage.setItem('ancalmo_salidas_v1', JSON.stringify(salidas));
+        sessionStorage.setItem('ancalmo_salidas_v1', JSON.stringify(salidas));
         gasSync('SALIDAS', salidas);
     }
 
-    // Carga inicial desde Google Sheets (migra localStorage si Sheet está vacío)
+    // Carga inicial desde Google Sheets (migra sessionStorage si Sheet está vacío)
     async function inicializarDesdeGAS() {
         mostrarToast('🔄 Conectando con Google Sheets...', 'info');
 
@@ -713,7 +713,7 @@
             _gasOnline = true;
             if (remoto_m.length > 0) {
                 movimientos = remoto_m.map(r => ({ ...r, num: parseInt(r.num)||0, palletsRec: parseInt(r.palletsRec)||0, cajas: parseInt(r.cajas)||0, palletsAlm: parseInt(r.palletsAlm)||0, peso: parseFloat(r.peso)||0 }));
-                localStorage.setItem('ancalmo_sistema_v5', JSON.stringify(movimientos));
+                sessionStorage.setItem('ancalmo_sistema_v5', JSON.stringify(movimientos));
             } else if (movimientos.length > 0) {
                 await gasSync('INGRESOS', movimientos);
             }
@@ -721,7 +721,7 @@
         if (remoto_e !== null) {
             if (remoto_e.length > 0) {
                 egresos = remoto_e.map(r => ({ ...r, num: parseInt(r.num)||0, pallets: parseInt(r.pallets)||0, cajas: parseInt(r.cajas)||0, peso: parseFloat(r.peso)||0 }));
-                localStorage.setItem('ancalmo_egresos_v1', JSON.stringify(egresos));
+                sessionStorage.setItem('ancalmo_egresos_v1', JSON.stringify(egresos));
             } else if (egresos.length > 0) {
                 await gasSync('PEDIDOS', egresos);
             }
@@ -729,7 +729,7 @@
         if (remoto_s !== null) {
             if (remoto_s.length > 0) {
                 salidas = remoto_s.map(r => ({ ...r, num: parseInt(r.num)||0, pallets: parseInt(r.pallets)||0, cajas: parseInt(r.cajas)||0, peso: parseFloat(r.peso)||0 }));
-                localStorage.setItem('ancalmo_salidas_v1', JSON.stringify(salidas));
+                sessionStorage.setItem('ancalmo_salidas_v1', JSON.stringify(salidas));
             } else if (salidas.length > 0) {
                 await gasSync('SALIDAS', salidas);
             }
@@ -758,13 +758,13 @@
     
     // Restaurar configuracion de facturacion guardada
     (function() {
-        let savedTarifa = localStorage.getItem('ancalmo_fact_tarifa');
-        let savedPallets = localStorage.getItem('ancalmo_fact_pallets_base');
+        let savedTarifa = sessionStorage.getItem('ancalmo_fact_tarifa');
+        let savedPallets = sessionStorage.getItem('ancalmo_fact_pallets_base');
         if(savedTarifa) document.getElementById('tarifaAlmacenajePeriodo').value = savedTarifa;
         if(savedPallets) document.getElementById('txtPalletsBaseFacturacion').value = savedPallets;
     })();
 
-    let periodosDinamicos = JSON.parse(localStorage.getItem('ancalmo_periodos_v1')) || [];
+    let periodosDinamicos = JSON.parse(sessionStorage.getItem('ancalmo_periodos_v1')) || [];
     if(periodosDinamicos.length === 0) {
         const mesesSemilla = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
         mesesSemilla.forEach((m, idx) => {
@@ -783,7 +783,7 @@
                 labelCorto: `2do de ${m.toUpperCase()} (${11}/${mStr}/${a} al 25/${mStr}/${a})`
             });
         });
-        localStorage.setItem('ancalmo_periodos_v1', JSON.stringify(periodosDinamicos));
+        sessionStorage.setItem('ancalmo_periodos_v1', JSON.stringify(periodosDinamicos));
     }
 
     let pedidosSeleccionadosModal = {};
@@ -837,7 +837,7 @@
         const passwordInput = prompt('Contraseña para vaciar base de datos:'); 
         if (passwordInput === 'blue2026*') { 
             movimientos = []; egresos = []; salidas = [];
-            localStorage.clear();
+            sessionStorage.clear();
             Promise.all([gasSync('INGRESOS',[]), gasSync('PEDIDOS',[]), gasSync('SALIDAS',[])])
                 .then(() => location.reload());
         } else { alert('❌ Contraseña Incorrecta.'); }
@@ -1627,8 +1627,8 @@
     function guardarConfigFacturacion() {
         let tarifa = document.getElementById('tarifaAlmacenajePeriodo').value;
         let palletsBase = document.getElementById('txtPalletsBaseFacturacion').value;
-        localStorage.setItem('ancalmo_fact_tarifa', tarifa);
-        localStorage.setItem('ancalmo_fact_pallets_base', palletsBase);
+        sessionStorage.setItem('ancalmo_fact_tarifa', tarifa);
+        sessionStorage.setItem('ancalmo_fact_pallets_base', palletsBase);
         // Bloquear pallets base de nuevo tras guardar
         let input = document.getElementById('txtPalletsBaseFacturacion');
         let btn = document.getElementById('btnLockPalletsBase');
@@ -1729,7 +1729,7 @@
         let fFi = document.getElementById('cfgFechaFin').value;
         if(fIn > fFi) { alert('⚠️ Error: La fecha de inicio no puede ser posterior al fin.'); return; }
         periodosDinamicos.push({ id: 'p_dyn_' + Date.now(), mes: mes, valueFiltro: `${fIn}|${fFi}`, texto: texto, labelCorto: texto });
-        localStorage.setItem('ancalmo_periodos_v1', JSON.stringify(periodosDinamicos));
+        sessionStorage.setItem('ancalmo_periodos_v1', JSON.stringify(periodosDinamicos));
         document.getElementById('formNuevoPeriodo').reset();
         refrescarTodosLosSelectsDePeriodos(); renderizarPantallaConfiguracion();
         alert('🟢 Período configurado y acoplado con éxito al sistema financiero.');
@@ -1738,7 +1738,7 @@
     function eliminarPeriodoDinamico(id) {
         if(confirm('¿Estás seguro de que deseas eliminar este período? Afectará los selectores de búsqueda.')) {
             periodosDinamicos = periodosDinamicos.filter(p => p.id !== id);
-            localStorage.setItem('ancalmo_periodos_v1', JSON.stringify(periodosDinamicos));
+            sessionStorage.setItem('ancalmo_periodos_v1', JSON.stringify(periodosDinamicos));
             refrescarTodosLosSelectsDePeriodos(); renderizarPantallaConfiguracion();
         }
     }
@@ -1798,8 +1798,8 @@
                     let targetList = keyStorage.includes('egresos') ? egresos : movimientos;
                     let obj = mapperFila(f, i, targetList, nuevos); if (obj && obj !== 'DUPLICADO') nuevos.push(obj);
                 }
-                if(keyStorage.includes('egresos')) { egresos = egresos.concat(nuevos); egresos.forEach((x,idx)=>x.num=idx+1); localStorage.setItem(keyStorage, JSON.stringify(egresos)); }
-                else { movimientos = movimientos.concat(nuevos); movimientos.forEach((x,idx)=>x.num=idx+1); localStorage.setItem(keyStorage, JSON.stringify(movimientos)); }
+                if(keyStorage.includes('egresos')) { egresos = egresos.concat(nuevos); egresos.forEach((x,idx)=>x.num=idx+1); sessionStorage.setItem(keyStorage, JSON.stringify(egresos)); }
+                else { movimientos = movimientos.concat(nuevos); movimientos.forEach((x,idx)=>x.num=idx+1); sessionStorage.setItem(keyStorage, JSON.stringify(movimientos)); }
                 callbackRender(); alert(`🟢 Carga masiva exitosa.`);
             } catch(e) { alert('Conflicto con el archivo Excel.'); }
         }; r.readAsArrayBuffer(file);
@@ -1893,15 +1893,15 @@
         const remoto_s = await gasGet('SALIDAS');
         if (remoto_m !== null && remoto_m.length > 0) {
             movimientos = remoto_m.map(r => ({ ...r, num: parseInt(r.num)||0, palletsRec: parseInt(r.palletsRec)||0, cajas: parseInt(r.cajas)||0, palletsAlm: parseInt(r.palletsAlm)||0, peso: parseFloat(r.peso)||0 }));
-            localStorage.setItem('ancalmo_sistema_v5', JSON.stringify(movimientos));
+            sessionStorage.setItem('ancalmo_sistema_v5', JSON.stringify(movimientos));
         }
         if (remoto_e !== null && remoto_e.length > 0) {
             egresos = remoto_e.map(r => ({ ...r, num: parseInt(r.num)||0, pallets: parseInt(r.pallets)||0, cajas: parseInt(r.cajas)||0, peso: parseFloat(r.peso)||0 }));
-            localStorage.setItem('ancalmo_egresos_v1', JSON.stringify(egresos));
+            sessionStorage.setItem('ancalmo_egresos_v1', JSON.stringify(egresos));
         }
         if (remoto_s !== null && remoto_s.length > 0) {
             salidas = remoto_s.map(r => ({ ...r, num: parseInt(r.num)||0, pallets: parseInt(r.pallets)||0, cajas: parseInt(r.cajas)||0, peso: parseFloat(r.peso)||0 }));
-            localStorage.setItem('ancalmo_salidas_v1', JSON.stringify(salidas));
+            sessionStorage.setItem('ancalmo_salidas_v1', JSON.stringify(salidas));
         }
         mostrarToast('✅ Datos actualizados', 'success');
         render_and_calc();
@@ -1913,7 +1913,7 @@
         if (!table) return;
         
         const storageKey = 'col_widths_' + tableId;
-        const savedWidths = JSON.parse(localStorage.getItem(storageKey) || '{}');
+        const savedWidths = JSON.parse(sessionStorage.getItem(storageKey) || '{}');
         
         const headers = table.querySelectorAll('th');
         headers.forEach((th, idx) => {
@@ -1943,7 +1943,7 @@
                     
                     // Guardar ancho
                     savedWidths[idx] = th.offsetWidth;
-                    localStorage.setItem(storageKey, JSON.stringify(savedWidths));
+                    sessionStorage.setItem(storageKey, JSON.stringify(savedWidths));
                 };
                 
                 document.addEventListener('mousemove', handleMouseMove);
